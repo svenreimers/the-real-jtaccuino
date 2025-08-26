@@ -529,19 +529,19 @@ public class JavaCellFactory implements CellFactory {
                 Platform.runLater(()
                         -> input.getActionFactory().selectAndDecorate(
                                 new Selection(0, input.getTextLength()),
-                                presetDecoration).execute(new ActionEvent()));
+                                presetDecoration).execute(new ActionEvent(), true));
                 highlights.stream().forEach(h -> {
                     var attrs = h.attributes();
                     if (attrs.contains(SourceCodeAnalysis.Attribute.KEYWORD)) {
                         Platform.runLater(()
                                 -> input.getActionFactory().selectAndDecorate(
                                         new Selection(h.start(), h.end()),
-                                        keywordDecoration).execute(new ActionEvent()));
+                                        keywordDecoration).execute(new ActionEvent(), true));
                     } else if (attrs.contains(SourceCodeAnalysis.Attribute.DECLARATION)) {
                         Platform.runLater(()
                                 -> input.getActionFactory().selectAndDecorate(
                                         new Selection(h.start(), h.end()),
-                                        declarationDecoration).execute(new ActionEvent()));
+                                        declarationDecoration).execute(new ActionEvent(), true));
                     }
 //                    Platform.runLater(() -> System.out.println(input.getDocument().getDecorations()));
                 });
