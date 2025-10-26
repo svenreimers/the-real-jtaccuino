@@ -115,17 +115,24 @@ sealed class InputControl extends AnchorPane permits JavaControl, MarkdownContro
         input.getStyleClass().add(type.styleClassPrefix + "-editor");
         input.setAutoSave(true);
 
-        widthProperty().subscribe(w -> recalculateRTA(w.doubleValue()));
+//        widthProperty().subscribe(w -> {
+//            System.out.println("Width (setup) " + w);
+//            recalculateRTA(w.doubleValue());
+//        });
     }
 
     final protected void subscribeToInput() {
         inputHeightSubscription = input.fullHeightProperty().subscribe((h) -> recalculateRTA(getWidth()));
-        widthSubscription = widthProperty().subscribe((w) -> recalculateRTA(w.doubleValue()));
+        widthSubscription = widthProperty().subscribe((w) -> {
+            recalculateRTA(w.doubleValue());
+        });
     }
 
     final protected void unsubscribeFromInput() {
         inputHeightSubscription.unsubscribe();
-        widthSubscription.unsubscribe();
+        if (null != widthSubscription) {
+            widthSubscription.unsubscribe();
+        }
     }
 
     private void recalculateRTA(double width) {

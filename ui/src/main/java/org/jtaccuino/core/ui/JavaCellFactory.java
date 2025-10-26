@@ -20,6 +20,7 @@ import org.jtaccuino.core.ui.completion.CompletionPopup;
 import org.jtaccuino.core.ui.api.CellData;
 import com.gluonhq.richtextarea.RichTextArea;
 import com.gluonhq.richtextarea.Selection;
+import com.gluonhq.richtextarea.model.Decoration;
 import com.gluonhq.richtextarea.model.DecorationModel;
 import com.gluonhq.richtextarea.model.Document;
 import com.gluonhq.richtextarea.model.ParagraphDecoration;
@@ -31,6 +32,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import javafx.application.Platform;
@@ -352,11 +354,13 @@ public class JavaCellFactory implements CellFactory {
                         input.getActionFactory().insertText("\n").execute(new ActionEvent());
                         t.consume();
                     }
-                } else {
-                    Platform.runLater(() -> this.control.getSheet().ensureCellVisible(control));
-                }
+                } 
+                
+//                else {                    
+//                    this.control.getSheet().ensureCellVisible(control);
+//                }
             });
-
+            
             input.documentProperty().addListener((observable, oldValue, newValue) -> {
                 if (completionPopup.isShowing()) {
                     Platform.runLater(() -> filterCompletion(input.getDocument().getText(), input.getDocument().getCaretPosition()));
@@ -417,8 +421,8 @@ public class JavaCellFactory implements CellFactory {
                                     execResult.setVisible(true);
                                     this.control.getSheet().moveFocusToNextCell(control);
                                     evalResult.lastValueAsString().ifPresent(s -> {
-                                        var resultData = evalResult.typeOfLastValue().get() + ": " +
-                                                s.replace("\\n", "\n").replace("\\\"","\"");
+                                        var resultData = evalResult.typeOfLastValue().get() + ": "
+                                                + s.replace("\\n", "\n").replace("\\\"", "\"");
                                         var result = new Label(resultData);
                                         result.getStyleClass().add("jshell_eval_result");
                                         outputBox.getChildren().add(result);
@@ -575,27 +579,26 @@ public class JavaCellFactory implements CellFactory {
 
         private void handleSyntaxHighlighting(String text) {
             this.control.getSheet().getReactiveJShell().highlightingAsync(text, highlights -> {
-//                highlights.forEach(System.out::println);
-                Platform.runLater(()
+                Runnable resetDecorations = ()
                         -> input.getActionFactory().selectAndDecorate(
                                 new Selection(0, input.getTextLength()),
-                                presetDecoration).execute(new ActionEvent()));
-                highlights.stream().forEach(h -> {
-                    var attrs = h.attributes();
-                    if (attrs.contains(SourceCodeAnalysis.Attribute.KEYWORD)) {
-                        Platform.runLater(()
-                                -> input.getActionFactory().selectAndDecorate(
-                                        new Selection(h.start(), h.end()),
-                                        keywordDecoration).execute(new ActionEvent()));
-                    } else if (attrs.contains(SourceCodeAnalysis.Attribute.DECLARATION)) {
-                        Platform.runLater(()
-                                -> input.getActionFactory().selectAndDecorate(
-                                        new Selection(h.start(), h.end()),
-                                        declarationDecoration).execute(new ActionEvent()));
-                    }
-//                    Platform.runLater(() -> System.out.println(input.getDocument().getDecorations()));
-                });
-            });
+                                presetDecoration).execute(new ActionEvent());
+                var decorations = input.getDocument().getDecorations();
+                var syntaxHighlights = highlights.stream()
+                        .map(SyntaxHighlight::of)
+                        .filter(Objects::nonNull)
+                        .toList();
+                
+                var syntaxDelta = syntaxHighlights.stream()
+                        .filter(sh -> !decorations.stream().filter(dm -> sh.matches(dm)).findAny().isPresent())
+                        .toList();                
+                if (syntaxDelta.size() > 0) {
+                    Platform.runLater(() -> {
+                        resetDecorations.run();
+                        syntaxHighlights.forEach(sh -> input.getActionFactory().selectAndDecorate(
+                                new Selection(sh.start, sh.end), sh.decoration).execute(new ActionEvent()));
+                    });
+                }});
         }
 
         @Override
@@ -622,6 +625,28 @@ public class JavaCellFactory implements CellFactory {
         }
 
         static record CompletionUpdate(String completion, String completionToInsert) {
+
+        }
+
+        static record SyntaxHighlight(int start, int end, Decoration decoration) {
+
+            static SyntaxHighlight of(SourceCodeAnalysis.Highlight h) {
+                var attrs = h.attributes();
+                if (attrs.contains(SourceCodeAnalysis.Attribute.KEYWORD)) {
+                    return new SyntaxHighlight(h.start(), h.end(), keywordDecoration);
+                } else if (attrs.contains(SourceCodeAnalysis.Attribute.DECLARATION)) {
+                    return new SyntaxHighlight(h.start(), h.end(), declarationDecoration);
+                } else {
+                    return (SyntaxHighlight) null;
+                }
+            }
+
+            boolean matches(DecorationModel dm) {
+                return dm.getDecoration().equals(decoration)
+                        && dm.getStart() == start
+                        && dm.getLength() == end - start;
+            }
+
         }
     }
 }
