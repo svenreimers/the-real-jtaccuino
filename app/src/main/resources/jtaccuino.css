@@ -536,6 +536,12 @@ AUTHOR: ShopWare
     -fx-border-color: transparent #AEB3C2 transparent transparent;
 }
 
+.md-editor .line-number-decorator {
+    -fx-text-fill: #AEB3C2;
+    -fx-font-family: "Monaspace Argon";
+    -fx-font-size: 11;
+}
+
 .md-editor .line-numbers .text-glyph {
     -fx-text-fill: #AEB3C2;
     -fx-font-family: "Monaspace Argon";
