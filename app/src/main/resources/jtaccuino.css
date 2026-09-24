@@ -615,3 +615,11 @@ AUTHOR: ShopWare
 .about-version {
     -fx-font-family: "Monaspace Argon";
 }
+
+.javadoc-popup-content {
+    -fx-background-color: white;
+    -fx-border-color: lightgray;
+    -fx-padding: 6px 8px 6px 8px;
+    -fx-font-family: "Monaspace Argon";
+    -fx-font-size: 12;
+}

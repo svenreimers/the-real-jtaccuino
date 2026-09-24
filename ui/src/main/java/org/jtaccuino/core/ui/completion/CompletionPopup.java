@@ -21,6 +21,8 @@ import javafx.application.Platform;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ObjectPropertyBase;
+import javafx.beans.property.ReadOnlyObjectProperty;
+import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -39,6 +41,8 @@ public class CompletionPopup extends PopupControl {
 
     private final ObservableList<CompletionItem> completionSuggestions = FXCollections.observableArrayList();
     private IntegerProperty visibleCompletions = new SimpleIntegerProperty(this, "visibleCompletions", 10);
+    private final ReadOnlyObjectWrapper<CompletionItem> focusedCompletion
+            = new ReadOnlyObjectWrapper<>(this, "focusedCompletion");
 
     public static class CompletionEvent extends Event {
 
@@ -75,6 +79,18 @@ public class CompletionPopup extends PopupControl {
 
     public ObservableList<CompletionItem> getSuggestions() {
         return completionSuggestions;
+    }
+
+    public final ReadOnlyObjectProperty<CompletionItem> focusedCompletionProperty() {
+        return focusedCompletion.getReadOnlyProperty();
+    }
+
+    public final CompletionItem getFocusedCompletion() {
+        return focusedCompletion.get();
+    }
+
+    void setFocusedCompletion(CompletionItem item) {
+        focusedCompletion.set(item);
     }
 
     public void setSuggestions(List<CompletionItem> items) {

@@ -203,6 +203,12 @@ public class ReactiveJShell {
                 .exceptionally(this::logThrowable);
     }
 
+    public void documentationAsyncFor(java.util.function.Supplier<String> documentationSupplier, Consumer<String> consumer) {
+        CompletableFuture.supplyAsync(documentationSupplier, worker)
+                .thenAccept(consumer)
+                .exceptionally(this::logThrowable);
+    }
+
     public Stream<Diag> diagnose(Snippet snippet) {
         return jshell.diagnostics(snippet);
     }
@@ -346,12 +352,13 @@ public class ReactiveJShell {
     }
 
     public static record CompletionItem(String completion, boolean matchesType, int anchor,
-            ElementKind elementKind, boolean keyword, boolean staticMember, String displayName, String typeInfo) {
+            ElementKind elementKind, boolean keyword, boolean staticMember, String displayName, String typeInfo,
+            java.util.function.Supplier<String> documentation) {
 
         static CompletionItem from(SourceCodeAnalysis.ElementSuggestion elementSuggestion) {
             var keyword = elementSuggestion.keyword();
             if (keyword != null) {
-                return new CompletionItem(keyword, elementSuggestion.matchesType(), elementSuggestion.anchor(), null, true, false, "", "");
+                return new CompletionItem(keyword, elementSuggestion.matchesType(), elementSuggestion.anchor(), null, true, false, "", "", elementSuggestion.documentation());
             }
             var element = elementSuggestion.element();
             if (element != null) {
@@ -367,23 +374,23 @@ public class ReactiveJShell {
                         var executable = (ExecutableType) element.asType();
                         yield new CompletionItem(completion, elementSuggestion.matchesType(), elementSuggestion.anchor(), kind, false,
                                 staticMember, name + "(" + simpleTypeNames(executable.getParameterTypes()) + ")",
-                                simpleTypeName(executable.getReturnType()));
+                                simpleTypeName(executable.getReturnType()), elementSuggestion.documentation());
                     }
                     case CONSTRUCTOR -> {
                         var executable = (ExecutableType) element.asType();
                         yield new CompletionItem(completion, elementSuggestion.matchesType(), elementSuggestion.anchor(), kind, false,
-                                staticMember, name + "(" + simpleTypeNames(executable.getParameterTypes()) + ")", "");
+                                staticMember, name + "(" + simpleTypeNames(executable.getParameterTypes()) + ")", "", elementSuggestion.documentation());
                     }
                     case FIELD, ENUM_CONSTANT, PARAMETER, LOCAL_VARIABLE, RESOURCE_VARIABLE,
                             EXCEPTION_PARAMETER, TYPE_PARAMETER, BINDING_VARIABLE ->
                         new CompletionItem(completion, elementSuggestion.matchesType(), elementSuggestion.anchor(), kind, false,
-                                staticMember, name, simpleTypeName(element.asType()));
+                                staticMember, name, simpleTypeName(element.asType()), elementSuggestion.documentation());
                     default ->
                         new CompletionItem(completion, elementSuggestion.matchesType(), elementSuggestion.anchor(), kind, false,
-                                staticMember, name, "");
+                                staticMember, name, "", elementSuggestion.documentation());
                 };
             }
-            return new CompletionItem("", elementSuggestion.matchesType(), elementSuggestion.anchor(), null, true, false, "", "");
+            return new CompletionItem("", elementSuggestion.matchesType(), elementSuggestion.anchor(), null, true, false, "", "", elementSuggestion.documentation());
         }
 
         private static String simpleTypeNames(List<? extends TypeMirror> types) {

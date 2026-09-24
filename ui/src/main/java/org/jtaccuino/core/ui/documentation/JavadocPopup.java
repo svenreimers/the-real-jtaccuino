@@ -1,0 +1,61 @@
+/*
+ * Copyright 2026 JTaccuino Contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.jtaccuino.core.ui.documentation;
+
+import javafx.scene.Node;
+import javafx.scene.Scene;
+import javafx.scene.control.PopupControl;
+import javafx.scene.control.Skin;
+import javafx.stage.Window;
+
+/**
+ * Lightweight popup displaying the javadoc of the currently focused completion
+ * suggestion. It is intentionally non-focusable so that keyboard navigation in
+ * the completion popup is unaffected.
+ */
+public class JavadocPopup extends PopupControl {
+
+    @SuppressWarnings("this-escape")
+    public JavadocPopup() {
+        setAutoFix(true);
+        setAutoHide(true);
+        setHideOnEscape(true);
+        setConsumeAutoHidingEvents(false);
+    }
+
+    public void show(Node node, double x, double y, Window parent) {
+        show(node, x, y);
+        syncStylesheets(node.getScene().getStylesheets());
+    }
+
+    private void syncStylesheets(javafx.collections.ObservableList<String> ownerStylesheets) {
+        var popupScene = getScene();
+        if (popupScene == null || ownerStylesheets.isEmpty()) {
+            return;
+        }
+        var popupStylesheets = popupScene.getStylesheets();
+        for (var stylesheet : ownerStylesheets) {
+            if (!popupStylesheets.contains(stylesheet)) {
+                popupStylesheets.add(stylesheet);
+            }
+        }
+    }
+
+    @Override
+    protected Skin<?> createDefaultSkin() {
+        return new JavadocPopupSkin(this);
+    }
+}

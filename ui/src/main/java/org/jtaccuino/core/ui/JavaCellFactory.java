@@ -29,6 +29,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.value.ChangeListener;
@@ -53,6 +54,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
+import javafx.util.Duration;
 import jdk.jshell.DeclarationSnippet;
 import jdk.jshell.EvalException;
 import jdk.jshell.ExpressionSnippet;
@@ -68,6 +70,8 @@ import jfx.incubator.scene.control.richtext.TextPos;
 import jfx.incubator.scene.control.richtext.model.StyledTextModel;
 import org.jtaccuino.core.ui.controls.JavaControl;
 import org.jtaccuino.core.ui.documentation.DocumentationItem;
+import org.jtaccuino.core.ui.documentation.JavadocPopup;
+import org.jtaccuino.core.ui.documentation.JavadocPopupSkin;
 import org.jtaccuino.core.ui.documentation.DocumentationPopup;
 import org.jtaccuino.core.ui.extensions.DisplayExtension;
 import org.jtaccuino.core.ui.extensions.PrintExtension;
@@ -163,6 +167,8 @@ public class JavaCellFactory implements CellFactory {
 
         private final CompletionPopup completionPopup = new CompletionPopup();
         private final DocumentationPopup documentationPopup = new DocumentationPopup();
+        private final JavadocPopup javadocPopup = new JavadocPopup();
+        private final PauseTransition javadocDwell = new PauseTransition(Duration.millis(500));
         private final VBox inputBox;
         private final CodeArea input;
         private final JavaSyntaxDecorator syntaxDecorator;
@@ -317,6 +323,54 @@ public class JavaCellFactory implements CellFactory {
                     Platform.runLater(() -> this.control.getSheet().ensureCellVisible(control));
                 }
             });
+
+            setupJavadocPreview();
+        }
+
+        private void setupJavadocPreview() {
+            javadocDwell.setOnFinished(e -> showJavadocForFocusedCompletion());
+            completionPopup.focusedCompletionProperty().addListener((ov, oldItem, newItem) -> {
+                if (newItem == null) {
+                    javadocDwell.stop();
+                    javadocPopup.hide();
+                } else if (!Objects.equals(newItem, oldItem)) {
+                    javadocDwell.playFromStart();
+                    javadocPopup.hide();
+                }
+            });
+            completionPopup.showingProperty().addListener((ov, showing, wasShowing) -> {
+                if (!showing) {
+                    javadocDwell.stop();
+                    javadocPopup.hide();
+                }
+            });
+        }
+
+        private void showJavadocForFocusedCompletion() {
+            var item = completionPopup.getFocusedCompletion();
+            if (item == null || item.documentation() == null) {
+                javadocPopup.hide();
+                return;
+            }
+            if (!completionPopup.isShowing()) {
+                return;
+            }
+            var shell = this.control.getSheet().getReactiveJShell();
+            shell.documentationAsyncFor(() -> item.documentation().get(), doc -> Platform.runLater(() -> {
+                if (!completionPopup.isShowing()) {
+                    return;
+                }
+                var javadoc = doc == null || doc.isBlank() ? "" : doc;
+                if (javadoc.isEmpty()) {
+                    javadocPopup.hide();
+                    return;
+                }
+                ((JavadocPopupSkin) javadocPopup.getSkin()).setJavadoc(javadoc);
+                javadocPopup.show(this.control.getScene().focusOwnerProperty().get(),
+                        completionPopup.getX() + completionPopup.getWidth() + 8,
+                        completionPopup.getY(),
+                        this.control.getScene().getWindow());
+            }));
         }
 
         private void subscribeToModel(StyledTextModel model) {
