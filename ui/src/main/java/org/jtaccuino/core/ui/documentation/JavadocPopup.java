@@ -15,6 +15,8 @@
  */
 package org.jtaccuino.core.ui.documentation;
 
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.PopupControl;
@@ -28,12 +30,26 @@ import javafx.stage.Window;
  */
 public class JavadocPopup extends PopupControl {
 
+    private final StringProperty javadoc = new SimpleStringProperty(this, "javadoc", "");
+
     @SuppressWarnings("this-escape")
     public JavadocPopup() {
         setAutoFix(true);
         setAutoHide(true);
         setHideOnEscape(true);
         setConsumeAutoHidingEvents(false);
+    }
+
+    public final StringProperty javadocProperty() {
+        return javadoc;
+    }
+
+    public final String getJavadoc() {
+        return javadoc.get();
+    }
+
+    public final void setJavadoc(String value) {
+        javadoc.set(value);
     }
 
     public void show(Node node, double x, double y, Window parent) {

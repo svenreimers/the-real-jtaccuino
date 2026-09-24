@@ -41,6 +41,8 @@ public class JavadocPopupSkin implements Skin<JavadocPopup> {
         this.content.setPrefWidth(600);
         this.content.setMaxWidth(600);
         this.content.getStyleClass().add("javadoc-popup-content");
+        setJavadoc(control.getJavadoc());
+        control.javadocProperty().addListener((ov, oldValue, newValue) -> setJavadoc(newValue));
     }
 
     private static StyledTextModel emptyModel() {
@@ -52,7 +54,7 @@ public class JavadocPopupSkin implements Skin<JavadocPopup> {
         }
     }
 
-    public void setJavadoc(String javadoc) {
+    private void setJavadoc(String javadoc) {
         try {
             this.content.setModel(SimpleViewOnlyStyledModel.of(javadoc == null ? "" : javadoc));
         } catch (IOException ex) {

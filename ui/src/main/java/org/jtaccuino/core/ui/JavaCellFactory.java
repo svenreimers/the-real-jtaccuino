@@ -71,7 +71,6 @@ import jfx.incubator.scene.control.richtext.model.StyledTextModel;
 import org.jtaccuino.core.ui.controls.JavaControl;
 import org.jtaccuino.core.ui.documentation.DocumentationItem;
 import org.jtaccuino.core.ui.documentation.JavadocPopup;
-import org.jtaccuino.core.ui.documentation.JavadocPopupSkin;
 import org.jtaccuino.core.ui.documentation.DocumentationPopup;
 import org.jtaccuino.core.ui.extensions.DisplayExtension;
 import org.jtaccuino.core.ui.extensions.PrintExtension;
@@ -365,7 +364,7 @@ public class JavaCellFactory implements CellFactory {
                     javadocPopup.hide();
                     return;
                 }
-                ((JavadocPopupSkin) javadocPopup.getSkin()).setJavadoc(javadoc);
+                javadocPopup.setJavadoc(javadoc);
                 javadocPopup.show(this.control.getScene().focusOwnerProperty().get(),
                         completionPopup.getX() + completionPopup.getWidth() + 8,
                         completionPopup.getY(),
