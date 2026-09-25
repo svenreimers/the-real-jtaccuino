@@ -24,15 +24,16 @@ import jfx.incubator.scene.control.richtext.model.StyleAttributeMap;
 /**
  * Renders a javadoc string into a {@link SimpleViewOnlyStyledModel}. The
  * javadoc text coming from JShell is plain HTML-ish; this renderer translates
- * a small, well-known subset of HTML tags and the standard javadoc block tags
- * into styled segments.
+ * a small, well-known subset of HTML tags, inline code/link tags and the
+ * standard javadoc block tags into styled segments.
  */
 final class JavadocRenderer {
 
     private static final String MONOSPACE_FAMILY = "Monaspace Argon";
     private static final Set<String> JAVADOC_TAGS = Set.of(
             "param", "return", "throws", "exception", "since", "see",
-            "author", "version", "deprecated", "serial", "serialField");
+            "author", "version", "deprecated", "serial", "serialField",
+            "serialData", "value", "hidden", "index", "docRoot");
 
     private JavadocRenderer() {
         // prevent instantiation
@@ -69,6 +70,14 @@ final class JavadocRenderer {
                     }
                     handleTag(javadoc.substring(i + 1, end));
                     i = end + 1;
+                } else if (c == '{') {
+                    int end = javadoc.indexOf('}', i);
+                    if (end == -1) {
+                        text.append(javadoc.substring(i));
+                        break;
+                    }
+                    handleInlineTag(javadoc.substring(i, end + 1));
+                    i = end + 1;
                 } else if (c == '&') {
                     int end = javadoc.indexOf(';', i);
                     if (end == -1) {
@@ -77,6 +86,10 @@ final class JavadocRenderer {
                     }
                     text.append(decodeEntity(javadoc.substring(i + 1, end)));
                     i = end + 1;
+                } else if (c == '\n') {
+                    flush();
+                    model.nl();
+                    i++;
                 } else {
                     text.append(c);
                     i++;
@@ -131,6 +144,37 @@ final class JavadocRenderer {
             }
         }
 
+        private void handleInlineTag(String inline) {
+            var inner = inline.substring(1, inline.length() - 1).trim();
+            if (inner.startsWith("@")) {
+                var name = inner.substring(1).split("\\s+", 2)[0].toLowerCase(Locale.ROOT);
+                switch (name) {
+                    case "code" -> appendInline(inner.substring("@code".length()).trim(), true, false, false);
+                    case "literal" -> appendInline(inner.substring("@literal".length()).trim(), false, false, false);
+                    case "link", "linkplain", "value" -> appendInline(inner.substring(name.length() + 1).trim(), false, false, true);
+                    default -> text.append(inline);
+                }
+            } else {
+                text.append(inline);
+            }
+        }
+
+        private void appendInline(String content, boolean code, boolean italic, boolean underline) {
+            flush();
+            var builder = StyleAttributeMap.builder();
+            if (code) {
+                builder.setFontFamily(MONOSPACE_FAMILY);
+                builder.setBackground(Color.GAINSBORO);
+            }
+            if (italic) {
+                builder.setItalic(true);
+            }
+            if (underline) {
+                builder.setUnderline(true);
+            }
+            model.addSegment(content, builder.build());
+        }
+
         private void setFlags(boolean newBold, boolean newItalic, boolean newMonospace) {
             flush();
             this.bold = newBold;
@@ -169,12 +213,12 @@ final class JavadocRenderer {
             var content = text.toString();
             text.setLength(0);
 
-            var javadocTag = extractJavadocTag(content);
-            if (javadocTag != null) {
-                if (!javadocTag.label().isEmpty()) {
-                    model.addSegment(javadocTag.label(), boldStyle());
+            var javaDocTag = extractJavadocTag(content);
+            if (javaDocTag != null) {
+                if (!javaDocTag.label().isEmpty()) {
+                    model.addSegment(javaDocTag.label(), boldStyle());
                 }
-                var rest = javadocTag.rest();
+                var rest = javaDocTag.rest();
                 if (!rest.isEmpty()) {
                     model.addSegment(" " + rest, currentStyle());
                 }

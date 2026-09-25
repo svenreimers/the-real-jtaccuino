@@ -52,6 +52,30 @@ public class JavadocRendererTest {
     }
 
     @Test
+    public void highlightsPlainTextJavadocTagsPerLine() {
+        var model = JavadocRenderer.render("Returns the string.\n@param a the first\n@return the result");
+        assertNotNull(model);
+        assertEquals(3, model.size());
+        assertEquals("Returns the string.", model.getPlainText(0));
+        assertEquals("@param a the first", model.getPlainText(1));
+        assertEquals("@return the result", model.getPlainText(2));
+    }
+
+    @Test
+    public void rendersInlineCodeTag() {
+        var model = JavadocRenderer.render("Use {@code for (int i = 0; i < n; i++)} to loop.");
+        assertNotNull(model);
+        assertEquals("Use for (int i = 0; i < n; i++) to loop.", model.getPlainText(0));
+    }
+
+    @Test
+    public void rendersInlineLinkTag() {
+        var model = JavadocRenderer.render("See {@link java.util.List#size} for details.");
+        assertNotNull(model);
+        assertEquals("See java.util.List#size for details.", model.getPlainText(0));
+    }
+
+    @Test
     public void splitsParagraphs() {
         var model = JavadocRenderer.render("<p>first</p><p>second</p>");
         assertNotNull(model);
