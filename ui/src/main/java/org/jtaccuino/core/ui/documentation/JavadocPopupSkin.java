@@ -43,6 +43,8 @@ public class JavadocPopupSkin implements Skin<JavadocPopup> {
         this.content.getStyleClass().add("javadoc-popup-content");
         setJavadoc(control.getJavadoc());
         control.javadocProperty().addListener((ov, oldValue, newValue) -> setJavadoc(newValue));
+        control.typeNameProperty().addListener((ov, oldValue, newValue) -> setJavadoc(control.getJavadoc()));
+        control.signatureProperty().addListener((ov, oldValue, newValue) -> setJavadoc(control.getJavadoc()));
     }
 
     private static StyledTextModel emptyModel() {
@@ -56,7 +58,7 @@ public class JavadocPopupSkin implements Skin<JavadocPopup> {
 
     private void setJavadoc(String javadoc) {
         try {
-            this.content.setModel(JavadocRenderer.render(javadoc));
+            this.content.setModel(JavadocRenderer.render(javadoc, control.getTypeName(), control.getSignature()));
         } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "Failed to create javadoc model", ex);
         }

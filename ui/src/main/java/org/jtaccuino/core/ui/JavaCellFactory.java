@@ -364,6 +364,8 @@ public class JavaCellFactory implements CellFactory {
                     javadocPopup.hide();
                     return;
                 }
+                javadocPopup.setTypeName(item.enclosingType());
+                javadocPopup.setSignature(item.signature());
                 javadocPopup.setJavadoc(javadoc);
                 javadocPopup.show(this.control.getScene().focusOwnerProperty().get(),
                         completionPopup.getX() + completionPopup.getWidth() + 8,

@@ -31,6 +31,8 @@ import javafx.stage.Window;
 public class JavadocPopup extends PopupControl {
 
     private final StringProperty javadoc = new SimpleStringProperty(this, "javadoc", "");
+    private final StringProperty typeName = new SimpleStringProperty(this, "typeName", "");
+    private final StringProperty signature = new SimpleStringProperty(this, "signature", "");
 
     @SuppressWarnings("this-escape")
     public JavadocPopup() {
@@ -50,6 +52,30 @@ public class JavadocPopup extends PopupControl {
 
     public final void setJavadoc(String value) {
         javadoc.set(value);
+    }
+
+    public final StringProperty typeNameProperty() {
+        return typeName;
+    }
+
+    public final String getTypeName() {
+        return typeName.get();
+    }
+
+    public final void setTypeName(String value) {
+        typeName.set(value);
+    }
+
+    public final StringProperty signatureProperty() {
+        return signature;
+    }
+
+    public final String getSignature() {
+        return signature.get();
+    }
+
+    public final void setSignature(String value) {
+        signature.set(value);
     }
 
     public void show(Node node, double x, double y, Window parent) {

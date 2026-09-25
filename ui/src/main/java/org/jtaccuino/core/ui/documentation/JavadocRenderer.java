@@ -22,10 +22,12 @@ import jfx.incubator.scene.control.richtext.model.SimpleViewOnlyStyledModel;
 import jfx.incubator.scene.control.richtext.model.StyleAttributeMap;
 
 /**
- * Renders a javadoc string into a {@link SimpleViewOnlyStyledModel}. The
- * javadoc text coming from JShell is plain HTML-ish; this renderer translates
- * a small, well-known subset of HTML tags, inline code/link tags and the
- * standard javadoc block tags into styled segments.
+ * Renders a javadoc string plus an optional header (enclosing type + member
+ * signature) into a {@link SimpleViewOnlyStyledModel}. The javadoc text coming
+ * from JShell is HTML-ish; this renderer translates a well-known subset of
+ * HTML tags, inline code/link tags and the standard javadoc block tags into
+ * styled segments. Paragraphs are kept intact and javadoc sections
+ * (Parameters/Returns/Throws/See Also) are rendered with an indented body.
  */
 final class JavadocRenderer {
 
@@ -34,14 +36,17 @@ final class JavadocRenderer {
             "param", "return", "throws", "exception", "since", "see",
             "author", "version", "deprecated", "serial", "serialField",
             "serialData", "value", "hidden", "index", "docRoot");
+    private static final double INDENT = 24;
 
     private JavadocRenderer() {
         // prevent instantiation
     }
 
-    static SimpleViewOnlyStyledModel render(String javadoc) {
+    static SimpleViewOnlyStyledModel render(String javadoc, String typeName, String signature) {
         var model = new SimpleViewOnlyStyledModel();
-        new Parser(model).parse(javadoc == null ? "" : javadoc);
+        var parser = new Parser(model);
+        parser.renderHeader(typeName, signature);
+        parser.parse(javadoc == null ? "" : javadoc);
         return model;
     }
 
@@ -58,7 +63,19 @@ final class JavadocRenderer {
             this.model = model;
         }
 
+        private void renderHeader(String typeName, String signature) {
+            if (typeName != null && !typeName.isBlank()) {
+                model.addSegment(typeName, StyleAttributeMap.builder().setFontFamily(MONOSPACE_FAMILY).build());
+                model.nl();
+            }
+            if (signature != null && !signature.isBlank()) {
+                model.addSegment(signature, StyleAttributeMap.builder().setBold(true).build());
+                model.nl();
+            }
+        }
+
         private void parse(String javadoc) {
+            boolean hasHtml = javadoc.indexOf('<') >= 0;
             int i = 0;
             while (i < javadoc.length()) {
                 char c = javadoc.charAt(i);
@@ -87,15 +104,19 @@ final class JavadocRenderer {
                     text.append(decodeEntity(javadoc.substring(i + 1, end)));
                     i = end + 1;
                 } else if (c == '\n') {
-                    flush();
-                    model.nl();
+                    if (!hasHtml) {
+                        flushTextLine();
+                        model.nl();
+                    } else {
+                        text.append(' ');
+                    }
                     i++;
                 } else {
                     text.append(c);
                     i++;
                 }
             }
-            flush();
+            flushTextLine();
         }
 
         private void handleTag(String rawTag) {
@@ -113,28 +134,40 @@ final class JavadocRenderer {
                 case "i", "em", "cite" -> setFlags(bold, !closing, monospace);
                 case "code", "tt", "pre" -> setFlags(bold, italic, !closing);
                 case "br", "hr" -> {
-                    flush();
+                    flushTextLine();
                     model.nl();
                 }
                 case "p", "div", "li", "tr", "ul", "ol", "dl", "blockquote" -> {
                     if (!closing) {
-                        flush();
+                        flushTextLine();
                         model.nl();
                     }
                 }
                 case "h1", "h2", "h3", "h4", "h5", "h6" -> {
                     if (!closing) {
-                        flush();
+                        flushTextLine();
                         bold = true;
                         model.nl();
                     } else {
-                        flush();
+                        flushTextLine();
                         bold = false;
+                    }
+                }
+                case "dt" -> {
+                    flushTextLine();
+                    if (!closing) {
+                        model.nl();
+                    }
+                }
+                case "dd" -> {
+                    flushTextLine();
+                    if (!closing) {
+                        model.nl();
                     }
                 }
                 case "table" -> {
                     if (closing) {
-                        flush();
+                        flushTextLine();
                         model.nl();
                     }
                 }
@@ -142,6 +175,13 @@ final class JavadocRenderer {
                     // ignore all other tags, e.g. a, span, font, img
                 }
             }
+        }
+
+        private void setFlags(boolean newBold, boolean newItalic, boolean newMonospace) {
+            flushTextLine();
+            this.bold = newBold;
+            this.italic = newItalic;
+            this.monospace = newMonospace;
         }
 
         private void handleInlineTag(String inline) {
@@ -175,13 +215,6 @@ final class JavadocRenderer {
             model.addSegment(content, builder.build());
         }
 
-        private void setFlags(boolean newBold, boolean newItalic, boolean newMonospace) {
-            flush();
-            this.bold = newBold;
-            this.italic = newItalic;
-            this.monospace = newMonospace;
-        }
-
         private String decodeEntity(String entity) {
             return switch (entity) {
                 case "lt" -> "<";
@@ -206,25 +239,36 @@ final class JavadocRenderer {
             }
         }
 
-        private void flush() {
+        /**
+         * Flushes the current line. If it is a plain-text javadoc tag line
+         * (e.g. a param tag followed by its description), it is rendered with a
+         * bold tag and an indented body; otherwise the line is appended as a
+         * normal segment.
+         */
+        private void flushTextLine() {
             if (text.isEmpty()) {
                 return;
             }
             var content = text.toString();
             text.setLength(0);
 
-            var javaDocTag = extractJavadocTag(content);
-            if (javaDocTag != null) {
-                if (!javaDocTag.label().isEmpty()) {
-                    model.addSegment(javaDocTag.label(), boldStyle());
-                }
-                var rest = javaDocTag.rest();
-                if (!rest.isEmpty()) {
-                    model.addSegment(" " + rest, currentStyle());
-                }
+            var tag = extractJavadocTag(content);
+            if (tag != null) {
+                model.addSegment(tag.label() + " ", boldStyle());
+                model.addSegment(tag.rest(), StyleAttributeMap.builder()
+                        .setSpaceLeft(INDENT)
+                        .build());
                 return;
             }
             model.addSegment(content, currentStyle());
+        }
+
+        private void flush() {
+            if (text.isEmpty()) {
+                return;
+            }
+            model.addSegment(text.toString(), currentStyle());
+            text.setLength(0);
         }
 
         private record JavadocTag(String label, String rest) {
