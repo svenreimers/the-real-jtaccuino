@@ -56,8 +56,8 @@ public class JavadocPopupSkin implements Skin<JavadocPopup> {
 
     private void setJavadoc(String javadoc) {
         try {
-            this.content.setModel(SimpleViewOnlyStyledModel.of(javadoc == null ? "" : javadoc));
-        } catch (IOException ex) {
+            this.content.setModel(JavadocRenderer.render(javadoc));
+        } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "Failed to create javadoc model", ex);
         }
     }
