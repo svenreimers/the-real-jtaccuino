@@ -338,7 +338,13 @@ public class JavaCellFactory implements CellFactory {
                 }
             });
             completionPopup.showingProperty().addListener((ov, showing, wasShowing) -> {
-                if (!showing) {
+                if (showing) {
+                    // First item may be selected while the popup is still hidden;
+                    // restart the dwell so the javadoc for it appears too.
+                    if (completionPopup.getFocusedCompletion() != null) {
+                        javadocDwell.playFromStart();
+                    }
+                } else {
                     javadocDwell.stop();
                     javadocPopup.hide();
                 }

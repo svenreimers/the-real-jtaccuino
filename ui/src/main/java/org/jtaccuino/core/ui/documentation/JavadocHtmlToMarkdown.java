@@ -19,11 +19,12 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Converts the HTML-ish javadoc text produced by JShell into markdown,
- * following the layout defined in {@code docs/javadoc-preview-format.md}.
- * Handles the well-known subset of HTML tags used by javadoc, inline code and
- * link tags, HTML entities and the standard javadoc block tags (as plain-text
- * sections).
+ * Converts the javadoc text produced by JShell into markdown, following the
+ * layout defined in {@code docs/javadoc-preview-format.md}. JShell javadoc is
+ * HTML-ish, so a small subset of HTML tags, inline code/link tags, HTML
+ * entities and plain-text javadoc block tags ({@code @param}, {@code @return},
+ * {@code @throws}, {@code @see}, ...) are translated into markdown with blank
+ * lines between paragraphs and highlighted tag lines.
  */
 final class JavadocHtmlToMarkdown {
 
@@ -51,7 +52,6 @@ final class JavadocHtmlToMarkdown {
         }
 
         private String convert() {
-            boolean hasHtml = source.indexOf('<') >= 0;
             while (pos < source.length()) {
                 char c = source.charAt(pos);
                 if (c == '<') {
@@ -60,7 +60,7 @@ final class JavadocHtmlToMarkdown {
                     handleEntity();
                 } else if (c == '{') {
                     handleInline();
-                } else if (c == '\n' && !hasHtml) {
+                } else if (c == '\n') {
                     out.append('\n');
                     pos++;
                 } else {
@@ -68,10 +68,14 @@ final class JavadocHtmlToMarkdown {
                     pos++;
                 }
             }
-            return hasHtml ? out.toString() : plainTextToMarkdown(out.toString());
+            return linesToMarkdown(out.toString());
         }
 
-        private static String plainTextToMarkdown(String text) {
+        /**
+         * Splits the extracted text into lines and rebuilds markdown with blank
+         * lines between paragraphs and highlighted javadoc tag lines.
+         */
+        private static String linesToMarkdown(String text) {
             var lines = text.split("\n", -1);
             var sb = new StringBuilder();
             for (var line : lines) {
@@ -82,18 +86,29 @@ final class JavadocHtmlToMarkdown {
                 if (sb.length() > 0) {
                     sb.append("\n\n");
                 }
-                var parts = trimmed.split("\\s+", 2);
-                if (parts.length > 0 && parts[0].startsWith("@")
-                        && JAVADOC_TAGS.contains(parts[0].substring(1))) {
-                    sb.append("**").append(parts[0]).append("**");
-                    if (parts.length > 1) {
-                        sb.append(' ').append(parts[1]);
-                    }
-                } else {
-                    sb.append(trimmed);
-                }
+                sb.append(highlightLine(trimmed));
             }
             return sb.toString();
+        }
+
+        private static String highlightLine(String line) {
+            var parts = line.split("\\s+", 2);
+            if (parts.length == 0 || !parts[0].startsWith("@")
+                    || !JAVADOC_TAGS.contains(parts[0].substring(1))) {
+                return line;
+            }
+            var tag = parts[0];
+            var rest = parts.length > 1 ? parts[1] : "";
+            return switch (tag) {
+                case "@param", "@throws", "@exception" -> {
+                    var argParts = rest.split("\\s+", 2);
+                    var arg = argParts.length > 0 ? argParts[0] : "";
+                    var description = argParts.length > 1 ? argParts[1] : "";
+                    yield "**" + tag + "** `" + arg + "`" + (description.isEmpty() ? "" : " - " + description);
+                }
+                case "@see" -> "**" + tag + "** `" + rest.trim() + "`";
+                default -> "**" + tag + "**" + (rest.isEmpty() ? "" : " " + rest);
+            };
         }
 
         private void handleTag() {

@@ -93,26 +93,22 @@ final class MarkdownToStyledModel {
                 return;
             }
             if (node instanceof Heading h) {
-                model.addSegment(plainText(h), StyleAttributeMap.builder()
-                        .setBold(true)
-                        .setSpaceAbove(SPACE_ABOVE)
-                        .build());
-                model.nl();
+                model.addSegment(plainText(h), StyleAttributeMap.builder().setBold(true).build());
+                endBlock();
                 return;
             }
             if (node instanceof Paragraph p) {
                 walkChildren(p);
-                model.nl();
+                endBlock();
                 return;
             }
             if (node instanceof BulletListItem bli) {
                 model.addSegment("", StyleAttributeMap.builder()
                         .setBullet("\u2022")
                         .setSpaceLeft(INDENT)
-                        .setSpaceAbove(SPACE_ABOVE)
                         .build());
                 walkChildren(bli);
-                model.nl();
+                endBlock();
                 return;
             }
             if (node instanceof BulletList bl) {
@@ -123,12 +119,16 @@ final class MarkdownToStyledModel {
                 model.addSegment(fcb.getContentChars().toString(), StyleAttributeMap.builder()
                         .setFontFamily(MONOSPACE_FAMILY)
                         .setBackground(Color.GAINSBORO)
-                        .setSpaceAbove(SPACE_ABOVE)
                         .build());
-                model.nl();
+                endBlock();
                 return;
             }
             walkChildren(node);
+        }
+
+        private void endBlock() {
+            model.setParagraphAttributes(StyleAttributeMap.builder().setSpaceAbove(SPACE_ABOVE).build());
+            model.nl();
         }
 
         private void walkStyled(Node node, StyleAttributeMap style) {

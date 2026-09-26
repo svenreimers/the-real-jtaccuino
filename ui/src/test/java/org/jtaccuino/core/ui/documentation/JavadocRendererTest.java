@@ -50,14 +50,14 @@ public class JavadocRendererTest {
     public void keepsJavadocTagText() {
         var model = JavadocRenderer.render("@param index the index", "", "");
         assertNotNull(model);
-        assertEquals(List.of("@param index the index"), nonEmptyParagraphs(model));
+        assertEquals(List.of("@param index - the index"), nonEmptyParagraphs(model));
     }
 
     @Test
     public void highlightsPlainTextJavadocTagsPerLine() {
         var model = JavadocRenderer.render("Returns the string.\n@param a the first\n@return the result", "", "");
         assertNotNull(model);
-        assertEquals(List.of("Returns the string.", "@param a the first", "@return the result"), nonEmptyParagraphs(model));
+        assertEquals(List.of("Returns the string.", "@param a - the first", "@return the result"), nonEmptyParagraphs(model));
     }
 
     @Test
@@ -98,7 +98,7 @@ public class JavadocRendererTest {
         assertNotNull(model);
         assertEquals(List.of(
                 "Description.",
-                "@param obj the object to compare",
+                "@param obj - the object to compare",
                 "@return true if equal"), nonEmptyParagraphs(model));
     }
 

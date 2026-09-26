@@ -24,7 +24,7 @@ public class JavadocHtmlToMarkdownTest {
     @Test
     public void convertsParagraphsToBlankLineSeparatedBlocks() {
         var md = JavadocHtmlToMarkdown.convert("<p>first</p><p>second</p>");
-        assertEquals("first\n\nsecond\n\n", md);
+        assertEquals("first\n\nsecond", md);
     }
 
     @Test
@@ -55,12 +55,25 @@ public class JavadocHtmlToMarkdownTest {
     public void convertsDtDdToBoldSectionAndBullets() {
         var md = JavadocHtmlToMarkdown.convert(
                 "<dl><dt>Parameters:</dt><dd>obj - the object</dd><dt>Returns:</dt><dd>true</dd></dl>");
-        assertEquals("**Parameters:**\n\n- obj - the object\n\n**Returns:**\n\n- true\n\n", md);
+        assertEquals("**Parameters:**\n\n- obj - the object\n\n**Returns:**\n\n- true", md);
     }
 
     @Test
     public void highlightsPlainTextJavadocTags() {
         var md = JavadocHtmlToMarkdown.convert("Description.\n@param obj the object\n@return true");
-        assertEquals("Description.\n\n**@param** obj the object\n\n**@return** true", md);
+        assertEquals("Description.\n\n**@param** `obj` - the object\n\n**@return** true", md);
+    }
+
+    @Test
+    public void highlightsJavadocTagsMixedWithHtml() {
+        var md = JavadocHtmlToMarkdown.convert(
+                "<p>Description.</p>\n@param obj the object\n@see #isAfter");
+        assertEquals("Description.\n\n**@param** `obj` - the object\n\n**@see** `#isAfter`", md);
+    }
+
+    @Test
+    public void highlightsSeeWithCodeFont() {
+        var md = JavadocHtmlToMarkdown.convert("@see #isBefore");
+        assertEquals("**@see** `#isBefore`", md);
     }
 }

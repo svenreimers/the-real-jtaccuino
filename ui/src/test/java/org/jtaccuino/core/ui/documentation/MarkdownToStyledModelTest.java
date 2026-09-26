@@ -60,6 +60,15 @@ public class MarkdownToStyledModelTest {
         assertEquals(List.of("Use code here"), nonEmptyParagraphs(model));
     }
 
+    @Test
+    public void appliesSpaceAboveToParagraphs() {
+        var model = MarkdownToStyledModel.render("first\n\nsecond");
+        var first = model.getParagraph(0);
+        var second = model.getParagraph(1);
+        assertNotNull(first.getParagraphAttributes());
+        assertNotNull(second.getParagraphAttributes());
+    }
+
     private static List<String> nonEmptyParagraphs(SimpleViewOnlyStyledModel model) {
         var result = new ArrayList<String>();
         for (int i = 0; i < model.size(); i++) {
