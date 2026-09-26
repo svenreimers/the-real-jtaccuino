@@ -15,6 +15,8 @@
  */
 package org.jtaccuino.core.ui.documentation;
 
+import java.util.ArrayList;
+import java.util.List;
 import jfx.incubator.scene.control.richtext.model.SimpleViewOnlyStyledModel;
 import org.junit.jupiter.api.Test;
 
@@ -27,61 +29,56 @@ public class JavadocRendererTest {
     public void rendersPlainText() {
         var model = JavadocRenderer.render("some documentation text", "", "");
         assertNotNull(model);
-        assertEquals("some documentation text", model.getPlainText(0));
+        assertEquals(List.of("some documentation text"), nonEmptyParagraphs(model));
     }
 
     @Test
     public void stripsHtmlTags() {
         var model = JavadocRenderer.render("Returns the <code>length</code> of the <b>string</b>.", "", "");
         assertNotNull(model);
-        assertEquals("Returns the length of the string.", model.getPlainText(0));
+        assertEquals(List.of("Returns the length of the string."), nonEmptyParagraphs(model));
     }
 
     @Test
     public void decodesEntities() {
         var model = JavadocRenderer.render("a &lt; b &amp;&amp; c", "", "");
         assertNotNull(model);
-        assertEquals("a < b && c", model.getPlainText(0));
+        assertEquals(List.of("a < b && c"), nonEmptyParagraphs(model));
     }
 
     @Test
     public void keepsJavadocTagText() {
         var model = JavadocRenderer.render("@param index the index", "", "");
         assertNotNull(model);
-        assertEquals("@param index the index", model.getPlainText(0));
+        assertEquals(List.of("@param index the index"), nonEmptyParagraphs(model));
     }
 
     @Test
     public void highlightsPlainTextJavadocTagsPerLine() {
         var model = JavadocRenderer.render("Returns the string.\n@param a the first\n@return the result", "", "");
         assertNotNull(model);
-        assertEquals(3, model.size());
-        assertEquals("Returns the string.", model.getPlainText(0));
-        assertEquals("@param a the first", model.getPlainText(1));
-        assertEquals("@return the result", model.getPlainText(2));
+        assertEquals(List.of("Returns the string.", "@param a the first", "@return the result"), nonEmptyParagraphs(model));
     }
 
     @Test
     public void rendersInlineCodeTag() {
         var model = JavadocRenderer.render("Use {@code for (int i = 0; i < n; i++)} to loop.", "", "");
         assertNotNull(model);
-        assertEquals("Use for (int i = 0; i < n; i++) to loop.", model.getPlainText(0));
+        assertEquals(List.of("Use for (int i = 0; i < n; i++) to loop."), nonEmptyParagraphs(model));
     }
 
     @Test
     public void rendersInlineLinkTag() {
         var model = JavadocRenderer.render("See {@link java.util.List#size} for details.", "", "");
         assertNotNull(model);
-        assertEquals("See java.util.List#size for details.", model.getPlainText(0));
+        assertEquals(List.of("See java.util.List#size for details."), nonEmptyParagraphs(model));
     }
 
     @Test
     public void splitsParagraphs() {
         var model = JavadocRenderer.render("<p>first</p><p>second</p>", "", "");
         assertNotNull(model);
-        assertEquals(2, model.size());
-        assertEquals("first", model.getPlainText(0));
-        assertEquals("second", model.getPlainText(1));
+        assertEquals(List.of("first", "second"), nonEmptyParagraphs(model));
     }
 
     @Test
@@ -89,19 +86,48 @@ public class JavadocRendererTest {
         var model = JavadocRenderer.render("Indicates whether some object is equal to this one.",
                 "java.lang.Object", "public boolean equals(Object obj)");
         assertNotNull(model);
-        assertEquals(3, model.size());
-        assertEquals("java.lang.Object", model.getPlainText(0));
-        assertEquals("public boolean equals(Object obj)", model.getPlainText(1));
-        assertEquals("Indicates whether some object is equal to this one.", model.getPlainText(2));
+        assertEquals(List.of(
+                "java.lang.Object",
+                "public boolean equals(Object obj)",
+                "Indicates whether some object is equal to this one."), nonEmptyParagraphs(model));
     }
 
     @Test
     public void rendersParamSectionPlainText() {
         var model = JavadocRenderer.render("Description.\n@param obj the object to compare\n@return true if equal", "", "");
         assertNotNull(model);
-        assertEquals(3, model.size());
-        assertEquals("Description.", model.getPlainText(0));
-        assertEquals("@param obj the object to compare", model.getPlainText(1));
-        assertEquals("@return true if equal", model.getPlainText(2));
+        assertEquals(List.of(
+                "Description.",
+                "@param obj the object to compare",
+                "@return true if equal"), nonEmptyParagraphs(model));
+    }
+
+    @Test
+    public void rendersHtmlSections() {
+        var model = JavadocRenderer.render(
+                "<p>Description.</p>"
+                        + "<dl><dt>Parameters:</dt><dd><code>obj</code> - the object</dd>"
+                        + "<dt>Returns:</dt><dd>true if equal</dd></dl>",
+                "java.lang.Object", "public boolean equals(Object obj)");
+        assertNotNull(model);
+        assertEquals(List.of(
+                "java.lang.Object",
+                "public boolean equals(Object obj)",
+                "Description.",
+                "Parameters:",
+                "obj - the object",
+                "Returns:",
+                "true if equal"), nonEmptyParagraphs(model));
+    }
+
+    private static List<String> nonEmptyParagraphs(SimpleViewOnlyStyledModel model) {
+        var result = new ArrayList<String>();
+        for (int i = 0; i < model.size(); i++) {
+            var text = model.getPlainText(i);
+            if (!text.isBlank()) {
+                result.add(text);
+            }
+        }
+        return result;
     }
 }
