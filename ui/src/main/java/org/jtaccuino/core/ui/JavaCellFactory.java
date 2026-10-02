@@ -186,7 +186,7 @@ public class JavaCellFactory implements CellFactory {
             this.control = javaCell;
             var inputControl = new JavaControl(control.cellNumber);
             input = inputControl.getInput();
-            syntaxDecorator = new JavaSyntaxDecorator(this.control.getSheet().getReactiveJShell(), javaCell.getBaseEditorFont());
+            syntaxDecorator = new JavaSyntaxDecorator(this.control.getSheet()::getReactiveJShell, javaCell.getBaseEditorFont());
             input.setSyntaxDecorator(syntaxDecorator);
             syntaxDecorator.installErrorTooltip(input);
             var gutter = new GutterDecorator(input);

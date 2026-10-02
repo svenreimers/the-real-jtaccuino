@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.scene.control.Tooltip;
@@ -45,7 +46,7 @@ class JavaSyntaxDecorator implements SyntaxDecorator {
     private record JShellHighlight(int start, int end, SourceCodeAnalysis.Attribute attribute) {
     }
 
-    private final ReactiveJShell shell;
+    private final Supplier<ReactiveJShell> shellSupplier;
     private final PauseTransition debounce;
     private final Tooltip errorTooltip = new Tooltip();
     private ReactiveJShell.ErrorRange tooltipError;
@@ -62,8 +63,8 @@ class JavaSyntaxDecorator implements SyntaxDecorator {
     private long generation = 0;
     private boolean refreshing = false;
 
-    JavaSyntaxDecorator(ReactiveJShell shell, Font font) {
-        this.shell = shell;
+    JavaSyntaxDecorator(Supplier<ReactiveJShell> shellSupplier, Font font) {
+        this.shellSupplier = shellSupplier;
         applyFont(font);
         debounce = new PauseTransition(Duration.millis(150));
         debounce.setOnFinished(e -> highlight());
@@ -299,6 +300,7 @@ class JavaSyntaxDecorator implements SyntaxDecorator {
             fullText.append('\n').append(currentModel.getPlainText(i));
         }
         var currentGeneration = ++generation;
+        var shell = shellSupplier.get();
         shell.highlightingAsync(fullText.toString(), result -> {
             Platform.runLater(() -> {
                 if (currentGeneration == generation) {

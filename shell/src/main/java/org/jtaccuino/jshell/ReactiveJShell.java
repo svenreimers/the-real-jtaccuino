@@ -24,10 +24,12 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -59,8 +61,7 @@ public class ReactiveJShell {
     private final ExecutorService worker = new ThreadPoolExecutor(
             1, 1, 0L, TimeUnit.MILLISECONDS,
             new LinkedBlockingQueue<>(),
-            Thread.ofVirtual().name("ReactiveJShellWorker").factory(),
-            new ThreadPoolExecutor.DiscardPolicy());
+            Thread.ofVirtual().name("ReactiveJShellWorker").factory());
 
     private final JShell jshell = JShell.builder()
             .compilerOptions("--enable-preview", "-source", System.getProperty("java.specification.version"),
@@ -162,7 +163,7 @@ public class ReactiveJShell {
     }
 
     public void evalAsync(Runnable preAction, String codeSnippet, Consumer<EvaluationResult> consumer) {
-        CompletableFuture.runAsync(preAction, worker)
+        runAsync(preAction)
                 .thenRun(() -> consumer.accept(eval(codeSnippet)))
                 .exceptionally(this::logThrowable);
     }
@@ -172,9 +173,25 @@ public class ReactiveJShell {
         return null;
     }
 
+    private <T> CompletableFuture<T> supplyAsync(Supplier<T> supplier) {
+        try {
+            return CompletableFuture.supplyAsync(supplier, worker);
+        } catch (RejectedExecutionException e) {
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+
+    private CompletableFuture<Void> runAsync(Runnable action) {
+        try {
+            return CompletableFuture.runAsync(action, worker);
+        } catch (RejectedExecutionException e) {
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+
     public void completionAsync(String text, int caretPosition,
             Consumer<CompletionSuggestion> consumer) {
-        CompletableFuture.supplyAsync(
+        supplyAsync(
                 () -> {
                     int[] anchorHolder = new int[1];
                     var completionItems = jshell.sourceCodeAnalysis().completionSuggestions(text, caretPosition,
@@ -189,25 +206,22 @@ public class ReactiveJShell {
                                         .toList();
                             });
                     return new CompletionSuggestion(completionItems, anchorHolder[0]);
-                },
-                worker)
+                })
                 .thenAccept(consumer)
                 .exceptionally(this::logThrowable);
     }
 
     public void documentationAsync(String text, int caretPosition, Consumer<List<Documentation>> consumer) {
-        CompletableFuture.supplyAsync(()
-                -> jshell.sourceCodeAnalysis().documentation(text, caretPosition, true)
-                        .stream()
-                        .map(d -> new Documentation(d.signature(), d.javadoc()))
-                        .toList(),
-                 worker)
+        supplyAsync(() -> jshell.sourceCodeAnalysis().documentation(text, caretPosition, true)
+                .stream()
+                .map(d -> new Documentation(d.signature(), d.javadoc()))
+                .toList())
                 .thenAccept(consumer)
                 .exceptionally(this::logThrowable);
     }
 
     public void documentationAsyncFor(java.util.function.Supplier<String> documentationSupplier, Consumer<String> consumer) {
-        CompletableFuture.supplyAsync(documentationSupplier, worker)
+        supplyAsync(documentationSupplier)
                 .thenAccept(consumer)
                 .exceptionally(this::logThrowable);
     }
@@ -221,13 +235,13 @@ public class ReactiveJShell {
     }
 
     public void highlightingAsync(String text, Consumer<List<SourceCodeAnalysis.Highlight>> consumer) {
-        CompletableFuture.supplyAsync(() -> sourceCodeAnalysis().highlights(text), worker)
+        supplyAsync(() -> sourceCodeAnalysis().highlights(text))
                 .thenAccept(consumer)
                 .exceptionally(this::logThrowable);
     }
 
     public void parseErrorsAsync(String text, Consumer<List<ErrorRange>> consumer) {
-        CompletableFuture.supplyAsync(() -> parseErrors(text), worker)
+        supplyAsync(() -> parseErrors(text))
                 .thenAccept(consumer)
                 .exceptionally(this::logThrowable);
     }
